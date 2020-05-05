@@ -1,0 +1,22 @@
+@startuml kafka_metric
+digraph kafka_metric {
+    kafka -> server
+    subgraph server {
+        server -> ReplicaManager
+
+        ReplicaManager -> UnderReplicatedPartitions [label="alert if > 0"]
+        ReplicaManager -> IsrExpandsPerSec
+        ReplicaManager -> IsrShrinksPerSec
+    }
+    kafka -> controller 
+    subgraph controller {
+        controller -> ControllerStats
+        controller -> KafkaController
+
+        ControllerStats -> LeaderElectionRateAndTimeMs
+        KafkaController -> ActiveControllerCount [label="alert if >1"]
+        KafkaController -> OfflinePartitionsCount [label="no active leader. alert if >1"]
+    }
+}
+
+@enduml

@@ -1,0 +1,34 @@
+@startuml kafka_message_ack
+
+alt acks=0
+    producer -> leader_a: send
+    leader_a --> leader_a: append
+    follower_b --> leader_a: fetch...
+    follower_c --> leader_a: fetch...
+    note right: no-guarantee
+else acks=1
+    producer -> leader_a: send
+    leader_a -> leader_a: append
+    leader_a -> producer: ack
+    follower_b --> leader_a: fetch
+    follower_c --> leader_a: fetch
+    note right: at-most-once
+else acks=all or acks=-1
+    producer -> leader_a: send
+    note right: a, b, and c are ISR when message received
+    leader_a -> leader_a: append
+    follower_b -> leader_a: fetch
+    follower_b -> follower_b: append
+    follower_b -> leader_a: fetch next
+    follower_c -> leader_a: fetch
+    follower_c -> follower_c: append
+    follower_c -> leader_a: fetch next
+    leader_a -> leader_a: advance hwm
+    leader_a -> producer: ack
+    follower_b --> leader_a: fetch
+    follower_b --> follower_b: advance hwm
+    follower_c --> leader_a: fetch
+    follower_c --> follower_c: advance hwm
+    note right: at-least-once
+end
+@enduml

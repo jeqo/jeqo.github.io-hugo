@@ -1,0 +1,31 @@
+@startuml kafka_message_replication
+
+group 1. initial state
+producer -> leader_a: send records
+end
+note right: all replicas have hwm==1
+
+group 2. append new message
+leader_a -> leader_replica: write msg (offset=1)
+end
+
+group 3. followers fetch and append msg
+follower_b -> leader_a: fetch
+follower_c -> leader_a: fetch
+follower_b -> follower_b: append
+follower_c -> follower_c: append
+end
+
+group 4. follower fetch with increased offset and mark hwm
+follower_b -> leader_a: fetch
+follower_c -> leader_a: fetch
+leader_a -> leader_a: advance hwm
+end
+
+group 5. followers fetch and advance their watermarks
+follower_b -> leader_a: fetch
+follower_c -> leader_a: fetch
+follower_b -> follower_b: advance hwm
+follower_c -> follower_c: advance hwm
+end
+@enduml

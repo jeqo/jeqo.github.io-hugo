@@ -1,0 +1,61 @@
+@startuml kafka_config
+
+digraph G {
+
+    subgraph server {
+        broker -> broker_id
+        broker -> broker_rack
+
+        broker -> zookeeper_connect
+
+        broker -> replica_placement
+        replica_placement -> replica_lag_time_max_ms [label="default=10 sec"]
+        replica_placement -> replication_offset_checkpoint
+        replication_offset_checkpoint -> replica_high_watermark_checkpoint_interval_ms
+
+        broker -> default_replication_factor
+        default_replication_factor -> topic
+
+        broker -> log
+
+        log -> log_flush
+        log_flush -> log_flush_interval_messages [label="default=infinite"]
+        log_flush -> log_flush_interval_ms [label="default=infinite"]
+
+        broker -> leader_balance
+        leader_balance -> auto_leader_rebalance_enable [label="default=true"]
+        leader_balance -> leader_imbalance_check_interval_seconds [label="default=5 min"]
+        leader_balance -> leader_imbalance_per_broker_percentage [label="default=10%"]
+    }
+
+    subgraph topic {
+        topic -> partition;
+        topic -> replication_factor;
+
+        topic -> min_insync_replicas
+    }
+
+    subgraph producer {
+        producer -> acks
+
+        producer -> max_block_ms [label="send()"]
+        producer -> linger_ms [label="batching"]
+        producer -> retries
+        producer -> retry_backoff_ms [label="default=100. retries"]
+        producer -> request_timeout_ms [label="default=30000. in_flight"]
+        producer -> delivery_timeout_ms [label="default=120000. plus await send"]
+        delivery_timeout_ms -> linger_ms
+        delivery_timeout_ms -> retry_backoff_ms
+        delivery_timeout_ms -> request_timeout_ms
+
+        producer -> enable_idempotence
+        producer -> max_in_flight_requests_per_connection [label="default=5"]
+
+        enable_idempotence -> max_in_flight_requests_per_connection
+        enable_idempotence -> acks [label="all"]
+        enable_idempotence -> retries [label=">0"]
+    }
+
+}
+
+@enduml

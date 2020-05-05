@@ -1,0 +1,25 @@
+@startuml kafka_leader_election
+
+note left: broker102 host leader replica
+
+group initial state
+broker102 -> broker102: fail
+producer --> broker102: failing send
+end
+
+broker102 --> zk: detect failure
+
+zk --> controller: identify failure
+
+controller -> controller: elect new leader
+controller -> zk: persist new ISR
+controller -> broker101: push new ISR
+controller -> broker103: push new ISR
+
+group after re-election and retries
+producer --> bootstrap_server: request metadata
+producer --> broker103: send to new leader replica
+end
+
+
+@enduml

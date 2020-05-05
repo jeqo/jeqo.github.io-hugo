@@ -1,0 +1,85 @@
+@startuml confluent_platform
+digraph G {
+    node [shape = circle];
+
+    subgraph zookeeper {
+        zookeeper_ensemble -> zookeeper_server [label="1..*"];
+
+    }
+
+    subgraph confluent_server {
+        broker -> zookeeper_ensemble
+
+        cluster -> broker [label="1..*"];
+        cluster -> topic [label="*"];
+        topic -> partition [label="*"];
+        topic_partition -> replica_placement [label="*"];
+        broker -> replica_placement [label="*"];
+        replica_placement -> segment [label="*"];
+        
+        segment -> record_batch [label="*"]
+        record_batch -> record [label="*"]
+        record -> offset [label="1"]
+        record -> header [label="*"]
+        record -> key [label="1"]
+        record -> value [label="1"]
+        record -> timestamp [label="1"]
+
+        replica_placement -> committed_message [label="*"]
+        committed_message -> committed_offset [label="1"]
+        replica_placement -> high_water_mark [label="1"]
+        high_water_mark -> committed_offset [label="most recent"]
+
+        cluster -> controller [label="1"];
+        controller -> broker [label="1"];
+
+        topic_partition -> replica_leader [label="1"]
+        topic_partition -> replica_follower [label="*"]
+        replica_follower -> replica_leader [label="poll"]
+
+        in_sync_replica -> replica_placement [label="*"]
+        in_sync_replica -> zookeeper_ensemble
+        controller -> in_sync_replica [label="listen for changes"]
+
+        broker -> recovery_point_offset_checkpoint [label="1"]
+        broker -> replication_offset_checkpoint [label="1"]
+        replication_offset_checkpoint -> high_water_mark
+        replication_offset_checkpoint -> topic_partition
+
+        replica_placement -> log [label="*"]
+        replica_placement -> index [label="*"]
+        replica_placement -> timeindex [label="*"]
+        replica_placement -> leader_epoch_checkpoint [label="1"]
+        leader_epoch_checkpoint -> replica_leader
+        leader_epoch_checkpoint -> committed_offset
+    }
+
+    subgraph producers {
+        producer -> replica_leader [label="*"];
+        
+        producer -> producer_record [label="*"];
+        producer_record -> topic [label="1"]
+        producer_record -> partition [label="0..1"]
+        producer_record -> timestamp [label="0..1"]
+        producer_record -> key [label="0..1"]
+        producer_record -> value [label="1"]
+        producer_record -> header [label="*"]
+        producer -> serializer
+        producer -> partitioner
+        producer -> producer_record_batch [label="*"]
+        producer_record_batch -> producer_record[label="*"]
+        producer_record_batch -> replica_leader [label="1"]
+    }
+
+    subgraph consumers {
+        consumer_group -> consumer [label="*"]        
+      
+        consumer -> replica_leader [label="poll"];
+        consumer -> replica_follower [label="poll"];
+
+        consumer -> committed_message [label="*"]
+    }
+
+
+}
+@enduml

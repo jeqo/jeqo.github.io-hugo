@@ -1,0 +1,47 @@
+@startuml kafka_replica_recovery
+group initial state
+    producer -> replica_a: send msg 1,2,3
+    replica_a -> replica_a: leader at hwm=1 leo=3
+    replica_b -> replica_b: follower at hwm=1 leo=2
+    replica_c -> replica_c: follower at hwm=1 leo=1 
+end
+note right: only msg 1 is committed
+alt replica 'a' fail and 'b' elected
+    replica_c -> replica_b: fetch new msg
+    replica_c -> replica_c: append msg
+    replica_c -> replica_b: fetch new msg
+    replica_b -> replica_b: advance hwm=2
+else replica 'a' fail and 'c' elected
+    replica_b -> replica_c: fetch new msg
+    replica_b -> replica_b: truncate log to leo=1
+end
+note right: new leader epoch = 1
+alt producer retries and b is leader
+    producer -> replica_b: send msg 2 and 3
+    replica_b -> replica_b: append both msgs, duplicating msg 1
+    replica_c -> replica_b: fetch
+    replica_c -> replica_c: append new msgs
+    replica_c -> replica_b: fetch new msgs
+    replica_b -> replica_b: advance hwm
+    group if replica a is back
+        replica_a -> replica_a: truncate msgs to hwm
+        replica_a -> replica_b: fetch
+        replica_a -> replica_a: append
+        replica_a -> replica_b: fetch new msgs
+    end
+else producer retries and c is leader
+    producer -> replica_c: send msg 2 and 3
+    replica_c -> replica_c: append both msgs, luckily without duplication
+    replica_b -> replica_c: fetch
+    replica_b -> replica_b: append new msgs
+    replica_b -> replica_c: fetch new msgs
+    replica_c -> replica_c: advance hwm
+    group if replica a is back
+        replica_a -> replica_a: truncate msgs to hwm
+        replica_a -> replica_c: fetch
+        replica_a -> replica_a: append
+        replica_a -> replica_c: fetch new msgs
+    end
+    
+end
+@enduml
