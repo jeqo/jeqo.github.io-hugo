@@ -3,6 +3,11 @@
 digraph G {
 
     subgraph server {
+        broker -> dynamic_per_cluster [label="config precedence"]
+        dynamic_per_cluster -> dynamic_cluster_wide
+        dynamic_cluster_wide -> static_per_broker
+        static_per_broker -> kafka_default
+
         broker -> broker_id
         broker -> broker_rack
 
@@ -13,14 +18,34 @@ digraph G {
         replica_placement -> replication_offset_checkpoint
         replication_offset_checkpoint -> replica_high_watermark_checkpoint_interval_ms
 
+        broker -> num_partitions
         broker -> default_replication_factor
         default_replication_factor -> topic
+
+        broker -> listeners
+        broker -> advertised_listeners
+
+        broker -> auto_create_topics_enable
 
         broker -> log
         log -> log_dirs
         log -> log_segment_bytes [label="default=1GB"]
-        log -> log_roll_ms [label="default=168hrs"]
+        log -> log_roll_ms [label="default=168hrs or 1week"]
+        log -> log_retention_ms [label="default=7days"]
+        log -> log_retention_bytes [label="disabled by default"]
+
+        log -> log_retention_check_interval_ms [label="default=5min"]
+
         log -> log_index_size_max_bytes [label="default=10MB"]
+        
+        log -> log_cleaner
+        log_cleaner -> log_cleaner_threads
+        log_cleaner -> log_cleaner_min_cleanable_ratio [label="default=50%"]
+        log_cleaner -> log_cleaner_io_max_bytes_per_second [label="default=infinite"]
+
+        log -> log_message_format_version
+        log -> log_cleanup_policy [label="delete,compact"]
+
         log -> log_flush
         log_flush -> log_flush_interval_messages [label="default=infinite"]
         log_flush -> log_flush_interval_ms [label="default=infinite"]
@@ -38,6 +63,19 @@ digraph G {
         offsets_topic -> offsets_topic_num_partitions [label="default=50"]
         offsets_topic -> offsets_topic_replication_factor [label="default=3"]
         offsets_topic_segment_bytes -> log_segment_bytes [label="similar, but for offsets topic", style="dotted"]
+        offsets_topic_num_partitions -> num_partitions [label="similar, but for offsets topic", style="dotted"]
+
+        broker -> num_io_threads [label="1 per log.dirs"]
+        broker -> num_network_threads
+        broker -> num_replica_fetchers
+        broker -> queued_max_requests
+
+        broker -> inter_broker_protocol_version
+
+        broker -> broker_controlled_shutdown
+        broker_controlled_shutdown -> controlled_shutdown_enable [label="default=true"]
+        broker_controlled_shutdown -> controlled_shutdown_max_retries [label="default=3"]
+        broker_controlled_shutdown -> controlled_shutdown_retry_backoff_ms [label="default=5sec"]
     }
 
     subgraph topic {
@@ -46,6 +84,15 @@ digraph G {
 
         topic -> min_insync_replicas [label="default=1. recommended=2"]
         topic -> unclean_leader_election_enable [label="default=false"]
+
+        topic -> delete_retention_ms
+    }
+
+    subgraph client {
+        client -> producer
+        client -> consumer
+
+        client -> client_id
     }
 
     subgraph producer {

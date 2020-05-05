@@ -8,9 +8,17 @@ digraph G {
     }
 
     subgraph kafka_cluster {
+        cluster -> broker [label="1..*"];
         broker -> zookeeper_ensemble
 
-        cluster -> broker [label="1..*"];
+        broker -> rolling_upgrade [label="rolling upgrade steps"]
+        rolling_upgrade -> backup_etc_config
+        backup_etc_config -> stop_broker_service
+        stop_broker_service -> uninstall_old_kafka
+        uninstall_old_kafka -> install_new_kafka
+        install_new_kafka -> start_broker_service
+        start_broker_service -> additional_steps
+
         cluster -> topic [label="*"];
         topic -> partition [label="*"];
         topic_partition -> replica_placement [label="*"];
@@ -59,6 +67,14 @@ digraph G {
         broker -> consumer_group_coordinator [label="*"]
 
         broker -> transaction_log [label="1"]
+
+        broker -> broker_logging
+        broker_logging -> server_log
+        broker_logging -> controller_log
+        broker_logging -> state_change_log
+        broker_logging -> log_cleaner_log
+        broker_logging -> kafka_authorizer_log [label="default=disabled"]
+        broker_logging -> kafka_request_log [label="default=disabled"]
     }
 
     subgraph producers {

@@ -19,6 +19,16 @@ digraph kafka_metric {
         KafkaController -> ActiveControllerCount [label="alert if >1"]
         KafkaController -> OfflinePartitionsCount [label="no active leader. alert if >1"]
     }
+    kafka -> log
+    subgraph log {
+        log -> LogCleanerManager
+        LogCleanerManager -> max_dirty_percent
+        LogCleaner -> cleaner_recopy_percent
+        LogCleaner -> max_clean_time_secs
+
+        cleaner_recopy_percent -> topic_compacted
+        max_clean_time_secs -> topic_compacted
+    }
 }
 
 @enduml
