@@ -1,4 +1,4 @@
-@startuml confluent_platform
+@startuml kafka
 digraph G {
     node [shape = circle];
 
@@ -7,7 +7,7 @@ digraph G {
 
     }
 
-    subgraph confluent_server {
+    subgraph kafka_cluster {
         broker -> zookeeper_ensemble
 
         cluster -> broker [label="1..*"];
@@ -46,12 +46,19 @@ digraph G {
         replication_offset_checkpoint -> high_water_mark
         replication_offset_checkpoint -> topic_partition
 
-        replica_placement -> log [label="*"]
+        replica_placement -> log [label="* contains first offset in file name to offset on next file - 1"]
         replica_placement -> index [label="*"]
         replica_placement -> timeindex [label="*"]
         replica_placement -> leader_epoch_checkpoint [label="1"]
         leader_epoch_checkpoint -> replica_leader
         leader_epoch_checkpoint -> committed_offset
+
+        replica_placement -> snapshot [label="on idempotent producers"]
+        replica_placement -> txnindex [label="on transactional producers"]
+    
+        broker -> consumer_group_coordinator [label="*"]
+
+        broker -> transaction_log [label="1"]
     }
 
     subgraph producers {
@@ -72,12 +79,19 @@ digraph G {
     }
 
     subgraph consumers {
+        consumer_group -> group_id
         consumer_group -> consumer [label="*"]        
       
         consumer -> replica_leader [label="poll"];
         consumer -> replica_follower [label="poll"];
 
         consumer -> committed_message [label="*"]
+
+        consumer -> consumer_commit [label="*"]
+        consumer_commit -> group_id
+        consumer_commit -> topic_name
+        consumer_commit -> topic_partition
+        consumer_commit -> offset [label="next to read/poll"]
     }
 
 

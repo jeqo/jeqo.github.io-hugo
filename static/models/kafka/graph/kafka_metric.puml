@@ -14,6 +14,8 @@ digraph kafka_metric {
         controller -> KafkaController
 
         ControllerStats -> LeaderElectionRateAndTimeMs
+        ControllerStats -> UncleanLeaderElectionsPerSec [label="alert if >0"]
+
         KafkaController -> ActiveControllerCount [label="alert if >1"]
         KafkaController -> OfflinePartitionsCount [label="no active leader. alert if >1"]
     }

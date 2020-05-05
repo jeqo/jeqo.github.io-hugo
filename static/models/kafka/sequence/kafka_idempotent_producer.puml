@@ -1,0 +1,13 @@
+@startuml kafka_idempotent_producer
+
+participant producer
+participant leader
+database snapshot
+
+producer -> leader: msg(seq=0, pid=1)
+leader --> snapshot: put(pid -> seq)
+leader ->x producer: ack
+producer -> leader: retry msg(seq=0, pid=1)
+leader -> leader: recognize dup and do not store
+leader -> producer: ack(dup)
+@enduml

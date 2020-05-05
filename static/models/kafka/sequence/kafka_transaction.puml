@@ -1,0 +1,58 @@
+@startuml kafka_transaction
+
+participant streams_app
+database input_topic
+database output_topic
+
+participant transaction_coordinator
+database transaction_state_topic
+participant consumer_group_coordinator
+database consumer_group_offsets_topic
+
+
+group coordinators
+streams_app --> consumer_group_coordinator: identify coordinator by hash(group.id)%num_partitions_consumer_offsets
+streams_app --> transaction_coordinator: identify coordinator by hash(transactional.id)%num_partitions_transaction_state
+end
+
+group initialize
+streams_app --> transaction_coordinator: register `producer.initTransactions()`
+transaction_coordinator --> transaction_state_topic: write tid->pid, pid: epoch 
+end
+note right: tid with older epoch are considered zombies and are fenced off
+
+group consume and produce
+streams_app -> input_topic: poll
+input_topic --> streams_app 
+end
+
+group begin tx
+streams_app -> streams_app: producer.beginTransaction()
+end
+
+group producer sends
+streams_app -> output_topic: producer.send(k1,v2)
+streams_app --> transaction_coordinator: add partition to tx
+transaction_coordinator --> transaction_state_topic: put(tid->p1)
+streams_app -> output_topic: producer.send(k2,v2)
+streams_app --> transaction_coordinator: add partition to tx
+transaction_coordinator --> transaction_state_topic: put(tid->p2)
+end
+
+group consumer offset
+streams_app -> transaction_coordinator: producer.sendoffsetsToTxn() -> AddOffsetCommitsToTxnRequest
+transaction_coordinator --> transaction_state_topic: put(tip->consumer_group_coodinator_partition)
+streams_app -> consumer_group_coordinator: producer.sendoffsetsToTxn() -> TxnOffsetCommitRequest
+consumer_group_coordinator -> consumer_group_offsets_topic: put(groupId->tp+offset)
+end
+
+group commit
+streams_app -> transaction_coordinator: producer.commitTransaction()
+transaction_coordinator -> transaction_state_topic: put(tid->prepare)
+transaction_coordinator --> consumer_group_offsets_topic: write commit markers `C`
+transaction_coordinator --> output_topic: write commit markers `C`
+transaction_coordinator --> transaction_state_topic: put(tip->committed)
+transaction_coordinator -> streams_app: success
+end
+
+@enduml

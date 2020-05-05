@@ -17,7 +17,10 @@ digraph G {
         default_replication_factor -> topic
 
         broker -> log
-
+        log -> log_dirs
+        log -> log_segment_bytes [label="default=1GB"]
+        log -> log_roll_ms [label="default=168hrs"]
+        log -> log_index_size_max_bytes [label="default=10MB"]
         log -> log_flush
         log_flush -> log_flush_interval_messages [label="default=infinite"]
         log_flush -> log_flush_interval_ms [label="default=infinite"]
@@ -26,13 +29,23 @@ digraph G {
         leader_balance -> auto_leader_rebalance_enable [label="default=true"]
         leader_balance -> leader_imbalance_check_interval_seconds [label="default=5 min"]
         leader_balance -> leader_imbalance_per_broker_percentage [label="default=10%"]
+
+        broker -> index
+        index -> index_interval_bytes [label="default=4KB"]
+
+        broker -> offsets_topic
+        offsets_topic -> offsets_topic_segment_bytes
+        offsets_topic -> offsets_topic_num_partitions [label="default=50"]
+        offsets_topic -> offsets_topic_replication_factor [label="default=3"]
+        offsets_topic_segment_bytes -> log_segment_bytes [label="similar, but for offsets topic", style="dotted"]
     }
 
     subgraph topic {
         topic -> partition;
         topic -> replication_factor;
 
-        topic -> min_insync_replicas
+        topic -> min_insync_replicas [label="default=1. recommended=2"]
+        topic -> unclean_leader_election_enable [label="default=false"]
     }
 
     subgraph producer {
@@ -44,9 +57,9 @@ digraph G {
         producer -> retry_backoff_ms [label="default=100. retries"]
         producer -> request_timeout_ms [label="default=30000. in_flight"]
         producer -> delivery_timeout_ms [label="default=120000. plus await send"]
-        delivery_timeout_ms -> linger_ms
-        delivery_timeout_ms -> retry_backoff_ms
-        delivery_timeout_ms -> request_timeout_ms
+        delivery_timeout_ms -> linger_ms [style="dotted"]
+        delivery_timeout_ms -> retry_backoff_ms [style="dotted"]
+        delivery_timeout_ms -> request_timeout_ms [style="dotted"]
 
         producer -> enable_idempotence
         producer -> max_in_flight_requests_per_connection [label="default=5"]
@@ -54,8 +67,25 @@ digraph G {
         enable_idempotence -> max_in_flight_requests_per_connection
         enable_idempotence -> acks [label="all"]
         enable_idempotence -> retries [label=">0"]
+
+        producer -> transactional_id
+        producer -> transaction_timeout_ms [label="default=60 sec"]
     }
 
+    subgraph consumer {
+        consumer -> group_id
+
+        consumer -> enable_auto_commit [label="default=true"]
+
+        consumer -> isolation_level
+        
+    }
+
+    subgraph streams {
+        streams -> application_id
+
+        streams -> processing_guarantee
+    }
 }
 
 @enduml
