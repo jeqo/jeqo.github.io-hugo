@@ -1,0 +1,11 @@
+@startuml kernel-io-threads
+
+digraph G {
+    io_thread -> posix_thread
+    posix_thread -> pthread
+
+    process -> pthread [label="1--*"]
+
+}
+
+@enduml

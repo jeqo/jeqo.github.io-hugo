@@ -65,10 +65,27 @@ digraph G {
         offsets_topic_segment_bytes -> log_segment_bytes [label="similar, but for offsets topic", style="dotted"]
         offsets_topic_num_partitions -> num_partitions [label="similar, but for offsets topic", style="dotted"]
 
-        broker -> num_io_threads [label="1 per log.dirs"]
-        broker -> num_network_threads
         broker -> num_replica_fetchers
-        broker -> queued_max_requests
+        
+        broker -> broker_network
+        broker -> broker_network_thread
+        broker -> broker_request_queue
+        broker -> broker_worker_thread
+
+        broker_network -> broker_network_thread
+        broker_network_thread -> broker_request_queue
+        broker_request_queue -> broker_worker_thread
+        broker_purgatory_map -> broker_response_queue
+        broker_response_queue -> broker_network_thread
+        broker_network_thread -> broker_network
+
+        broker_network -> socket_send_buffer_bytes
+        broker_network_thread -> num_network_threads [label="increase for SSL"]
+        broker_network_thread -> socket_request_max_bytes
+        broker_request_queue -> queued_max_requests [label="used when no io threads available"]
+        broker_worker_thread -> num_io_threads [label="1 per log.dirs"]
+        broker_purgatory_map -> replica_fetch_wait_max_ms
+        broker_purgatory_map -> replica_fetch_min_bytes
 
         broker -> inter_broker_protocol_version
 
@@ -76,7 +93,16 @@ digraph G {
         broker_controlled_shutdown -> controlled_shutdown_enable [label="default=true"]
         broker_controlled_shutdown -> controlled_shutdown_max_retries [label="default=3"]
         broker_controlled_shutdown -> controlled_shutdown_retry_backoff_ms [label="default=5sec"]
+    
+        broker -> message_max_bytes
+        broker -> max_partition_fetch_bytes
+
+        broker -> zookeeper_session_timeout_ms [label="default=6sec"]
     }
+    
+    message_size -> message_max_bytes
+    message_size -> replica_fetch_max_bytes
+    message_size -> max_partition_fetch_bytes
 
     subgraph topic {
         topic -> partition;
@@ -93,13 +119,21 @@ digraph G {
         client -> consumer
 
         client -> client_id
+
+        client -> max_partition_fetch_bytes
     }
 
     subgraph producer {
         producer -> acks
+        
+        producer -> producer_throughput
+        producer_throughput -> buffer_memory [label="32MB"]
+        producer_throughput -> compression_type [label="gzip,snappy,lz4,zstd"]
+        producer_throughput -> producer_batching
+        producer_batching -> batch_size [label="default=16KB. typical=1MB"]
+        producer_batching -> linger_ms [label="default=0. typical=100"]
 
         producer -> max_block_ms [label="send()"]
-        producer -> linger_ms [label="batching"]
         producer -> retries
         producer -> retry_backoff_ms [label="default=100. retries"]
         producer -> request_timeout_ms [label="default=30000. in_flight"]

@@ -1,0 +1,10 @@
+@startuml zipkin-brave
+
+digraph G {
+    brave -> tracing
+
+    tracing -> tracer
+    
+}
+
+@enduml

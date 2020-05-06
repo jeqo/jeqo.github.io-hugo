@@ -1,0 +1,61 @@
+@startuml kernel-sockets
+
+digraph G {
+    socker -> socket_system_call [label="created by"]
+    socket_system_call -> file_descriptor [label="returns"]
+
+    socket_system_call -> socket_system_call_bind [label="bind socket to address"]
+    socket_system_call -> socket_system_call_listen [label="open for incoming connections"]
+    socket_system_call -> socket_system_call_accept [label="accept connection"]
+    socket_system_call -> socket_system_call_connect [label="establishes connection"]
+
+    ' conventional io
+    socket_io -> system_call_read
+    socket_io -> system_call_write
+    ' socket-specific system calls (blocking)
+    socket_io -> socket_system_call_send
+    socket_io -> socket_system_call_recv
+    socket_io -> socket_system_call_sendto
+    socket_io -> socket_system_call_recvfrom
+
+    communication_domain -> socket [label="hosts"]
+    communication_domain -> address_format [label="AF|PF(protocol family)"]
+    communication_domain -> communication_range
+    communication_range -> same_host
+    communication_range -> via_network
+
+    communication_domain -> domain_unix [label="AF_LOCAL|AF_UNIX. within kernel, same host"]
+    communication_domain -> domain_ipv4 [label="AF_INET. hosts connected IPv4"]
+    communication_domain -> domain_ipv6 [label="AF_INET6. hosts connected IPv6"]
+
+    domain_unix -> address_format [label="path-name"]
+    domain_unix -> address_structure [label="sock-addr_un"]
+    domain_ipv4 -> address_format [label="32bit IPv4 address + 16bit port number"]
+    domain_ipv4 -> address_structure [label="sock-addr_in"]
+    domain_ipv6 -> address_format [label="128bit IPv4 address + 16bit port number"]
+    domain_ipv6 -> address_structure [label="sock-addr_in6"]
+
+    socket -> socket_type
+    socket_type -> socket_type_stream [label="SOCK_STREAM. Similar to Pipes"]
+    socket_type -> socket_type_datagram [label="SOCK_DGRAM. Connectionless"]
+
+    socket_property -> reliable_delivery
+    socket_property -> message_boundaries_preserved
+    socket_property -> connection_oriented
+
+    socket_type_stream -> reliable_delivery [label="right msg or none"]
+    socket_type_stream -> connection_oriented [label="bidirectional"]
+    socket_type_datagram -> message_boundaries_preserved
+
+    socket_type_stream -> peer_socket [label="socket at the other end"]
+    peer_socket -> peer_address
+    peer_application -> peer_socket [label="using"]
+
+    internet_domain -> udp_socket
+    internet_domain -> tcp_socket
+    socket_type_datagram -> udp_socket
+    socket_type_stream -> tcp_socket
+
+
+}
+@enduml

@@ -1,0 +1,88 @@
+@startuml kafka_metric
+digraph kafka_metric {
+    kafka -> server
+    subgraph server {
+        server -> ReplicaManager
+
+        ReplicaManager -> UnderReplicatedPartitions [label="alert if > 0"]
+        ReplicaManager -> IsrExpandsPerSec
+        ReplicaManager -> IsrShrinksPerSec
+        ReplicaManager -> LeaderCount
+        ReplicaManager -> PartitionCount
+
+        server -> KafkaRequestHandlerPool
+        KafkaRequestHandlerPool -> RequestHandlerAvgIdlePercent [label="alert if <0.4"]
+    
+        server -> SessionExpireListener
+        SessionExpireListener -> ZookeeperExpiresPerSec [label="alert if >0"]
+    }
+    kafka -> controller 
+    subgraph controller {
+        controller -> ControllerStats
+        controller -> KafkaController
+
+        ControllerStats -> LeaderElectionRateAndTimeMs
+        ControllerStats -> UncleanLeaderElectionsPerSec [label="alert if >0"]
+
+        KafkaController -> ActiveControllerCount [label="alert if >1"]
+        KafkaController -> OfflinePartitionsCount [label="no active leader. alert if >1"]
+    }
+    kafka -> log
+    subgraph log {
+        log -> LogCleanerManager
+        LogCleanerManager -> max_dirty_percent
+        LogCleaner -> cleaner_recopy_percent
+        LogCleaner -> max_clean_time_secs
+
+        cleaner_recopy_percent -> topic_compacted
+        max_clean_time_secs -> topic_compacted
+    }
+    kafka -> network
+    subgraph network {
+        network -> RequestMetrics [label="focus on request=Producer|FetchConsumer|FetchFollower"]
+        RequestMetrics -> RequestsPerSec
+        RequestMetrics -> RequestQueueTimeMs
+        RequestMetrics -> ResponseSendTimeMs
+        RequestMetrics -> ResponseQueueTimeMs
+        RequestMetrics -> LocalTimeMs [label="processing time at the leader"]
+        RequestMetrics -> RemoteTimeMs [label="waiting time for followers"]
+        RequestMetrics -> TotalTimeMs
+        TotalTimeMs -> RequestQueueTimeMs
+        TotalTimeMs -> LocalTimeMs
+        TotalTimeMs -> RemoteTimeMs
+        TotalTimeMs -> ResponseQueueTimeMs
+        TotalTimeMs -> ResponseSendTimeMs
+
+        network -> SocketServer
+        SocketServer -> NetworkProcessorAvgIdlePercent [label="alert if <0.4"]
+    
+        network -> RequestChannel
+        RequestChannel -> RequestQueueSize
+    }
+
+    kafka -> client [label="replace with consumer|producer|streams|connector"]
+    subgraph client {
+        client -> client_metrics
+        client_metrics -> io_ratio [label="if close to 1, too much io"] 
+        client_metrics -> io_wait_ratio [label="if close to 1, idle, check broker"]
+        io_wait_ratio -> io_ratio
+    }
+
+    subgraph producer {
+        producer -> producer_latency
+        producer_latency -> io_wait_ratio
+        producer_latency -> io_ratio
+        producer_latency -> producer_processing_time
+
+        producer -> producer_metrics
+        producer_metrics -> batch_size_avg
+        producer_metrics -> compression_rate_avg
+
+        producer -> producer_topic_metrics
+        producer_topic_metrics -> record_send_rate
+        producer_topic_metrics -> record_byte_rate
+        producer_topic_metrics -> record_error_rate
+    }
+}
+
+@enduml

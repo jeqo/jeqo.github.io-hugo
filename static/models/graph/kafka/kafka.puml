@@ -75,6 +75,14 @@ digraph G {
         broker_logging -> log_cleaner_log
         broker_logging -> kafka_authorizer_log [label="default=disabled"]
         broker_logging -> kafka_request_log [label="default=disabled"]
+    
+        broker -> request_processing
+        request_processing -> broker_network_thread
+        broker_network_thread -> broker_request_queue
+        broker_request_queue -> broker_worker_thread
+        broker_worker_thread -> page_cache
+        broker_worker_thread -> broker_purgatory_map
+        broker_purgatory_map -> broker_response_queue
     }
 
     subgraph producers {
@@ -92,6 +100,12 @@ digraph G {
         producer -> producer_record_batch [label="*"]
         producer_record_batch -> producer_record[label="*"]
         producer_record_batch -> replica_leader [label="1"]
+
+        producer -> producer_send
+        producer_send -> serializer
+        serializer -> partitioner
+        partitioner -> accumulator
+        accumulator -> produce_request
     }
 
     subgraph consumers {
